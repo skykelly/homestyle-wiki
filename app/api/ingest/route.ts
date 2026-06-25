@@ -14,13 +14,16 @@ export async function POST(req: Request) {
     return Response.json({ error: 'title and raw_content required' }, { status: 400 })
   }
 
-  const sourceId = await runIngest({
-    title: body.title,
-    raw_content: body.raw_content,
-    url: body.url,
-    publisher: body.publisher,
-    source_type: body.source_type ?? 'external',
-  })
-
-  return Response.json({ source_id: sourceId })
+  try {
+    const sourceId = await runIngest({
+      title: body.title,
+      raw_content: body.raw_content,
+      url: body.url,
+      publisher: body.publisher,
+      source_type: body.source_type ?? 'external',
+    })
+    return Response.json({ source_id: sourceId })
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
+  }
 }

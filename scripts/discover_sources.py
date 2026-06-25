@@ -19,11 +19,16 @@ from urllib.parse import quote
 from openai import OpenAI
 
 FEEDS = [
-    {"url": "https://blog.ohou.se/feed", "publisher": "오늘의집 블로그"},
-    {"url": "https://www.kidp.or.kr/rss.do", "publisher": "한국디자인진흥원"},
-    {"url": "https://www.seouldesign.or.kr/rss/news", "publisher": "서울디자인재단"},
-    {"url": "https://rss.hankyung.com/economy/life.xml", "publisher": "한경 라이프"},
-    {"url": "https://www.chosun.com/rss/life.xml", "publisher": "조선일보 라이프"},
+    # 국내
+    {"url": "https://www.hankyung.com/feed/land", "publisher": "한국경제 부동산"},
+    {"url": "https://www.sedaily.com/rss/S1O1", "publisher": "서울경제 라이프"},
+    {"url": "https://news.kbs.co.kr/rss/kbs_news_life.xml", "publisher": "KBS 라이프"},
+    # 글로벌 인테리어/디자인 (GPT 스코어링이 관련성 필터링)
+    {"url": "https://www.dezeen.com/feed/", "publisher": "Dezeen"},
+    {"url": "https://www.archdaily.com/feed", "publisher": "ArchDaily"},
+    {"url": "https://www.livingetc.com/feeds/articles.rss", "publisher": "Living Etc"},
+    {"url": "https://www.housebeautiful.com/rss/all.xml", "publisher": "House Beautiful"},
+    {"url": "https://www.houzz.com/magazine/rss", "publisher": "Houzz Magazine"},
 ]
 
 ITEMS_PER_FEED = 10
@@ -132,14 +137,20 @@ def ingest(title: str, raw_content: str, url: str, publisher: str) -> dict:
         return json.loads(res.read())
 
 
-def main() -> None:
+def main() -> int:
+    feeds_ok = 0
+    feeds_fail = 0
+    total_ingested = 0
+
     for feed in FEEDS:
         print(f"\n=== {feed['publisher']} ({feed['url']}) ===")
 
         try:
             items = parse_feed(fetch(feed["url"]))[:ITEMS_PER_FEED]
+            feeds_ok += 1
         except Exception as e:
             print(f"  [error] 피드 가져오기 실패: {e}")
+            feeds_fail += 1
             continue
 
         print(f"  {len(items)}개 항목 발견")
@@ -171,10 +182,19 @@ def main() -> None:
                 raw_content = fetch_content(url)
                 result = ingest(title, raw_content, url, feed["publisher"])
                 print(f"    ingest 완료: {result.get('source_id')}")
+                total_ingested += 1
             except Exception as e:
                 print(f"    [error] ingest 실패: {e}")
 
             time.sleep(RATE_LIMIT_SEC)
+
+    print(f"\n=== 완료: 피드 성공 {feeds_ok}/{len(FEEDS)}개, 신규 소스 {total_ingested}개 ingest ===")
+
+    # 피드가 전부 실패하면 exit 1 → GitHub Actions에서 실패로 표시
+    if feeds_ok == 0:
+        print("[fatal] 성공한 피드가 없습니다. 피드 URL을 점검하세요.", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

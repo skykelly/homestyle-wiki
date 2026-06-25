@@ -1,7 +1,7 @@
-import OpenAI from 'openai'
 import { and, eq } from 'drizzle-orm'
 import { db } from './db'
 import { knowledge_embeddings } from './db/schema'
+import { getOpenAI } from './openai'
 
 const EMBED_MODEL = 'text-embedding-3-small'
 const BATCH_SIZE = 20
@@ -35,7 +35,7 @@ export async function rebuildEmbeddings(
 
   if (chunks.length === 0) return
 
-  const client = new OpenAI()
+  const client = getOpenAI()
   const rows: {
     ref_type: string; ref_id: string; content: string
     embedding: number[]; metadata: Record<string, unknown>
